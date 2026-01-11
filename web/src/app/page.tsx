@@ -523,22 +523,55 @@ function renderPayload(payload: Record<string, unknown>) {
   }
 
   if (type === "mixed_stack" || blocks) {
+    // Group consecutive images for grid layout
+    const processedBlocks: Array<{ type: string; content: unknown }> = [];
+    let imageGroup: string[] = [];
+
+    (blocks ?? []).forEach((block, index) => {
+      if (block.type === "image" && block.url) {
+        imageGroup.push(block.url);
+      } else {
+        if (imageGroup.length > 0) {
+          processedBlocks.push({ type: "image_group", content: [...imageGroup] });
+          imageGroup = [];
+        }
+        processedBlocks.push({ type: block.type, content: block });
+      }
+    });
+
+    if (imageGroup.length > 0) {
+      processedBlocks.push({ type: "image_group", content: [...imageGroup] });
+    }
+
     return (
       <div className="space-y-3 rounded-2xl border border-border bg-white p-4">
-        {(blocks ?? []).map((block, index) => {
-          if (block.type === "heading") {
+        {processedBlocks.map((item, index) => {
+          if (item.type === "image_group") {
+            const images = item.content as string[];
+            const gridClass = images.length === 1 ? "grid-cols-1" :
+                            images.length === 2 ? "grid-cols-2" :
+                            "grid-cols-2";
+            return (
+              <div key={index} className={`grid ${gridClass} gap-2`}>
+                {images.map((url, imgIndex) => (
+                  <img
+                    key={imgIndex}
+                    src={url}
+                    alt={`Content image ${imgIndex + 1}`}
+                    className="w-full rounded-xl object-cover"
+                    style={{ maxHeight: images.length === 1 ? "400px" : "250px" }}
+                  />
+                ))}
+              </div>
+            );
+          }
+
+          const block = item.content as { type: string; text?: string };
+          if (item.type === "heading") {
             return (
               <div key={index} className="text-base font-semibold">
                 {block.text}
               </div>
-            );
-          }
-          if (block.type === "image") {
-            return (
-              <div
-                key={index}
-                className="h-28 rounded-xl bg-gradient-to-br from-slate-900 to-orange-500"
-              />
             );
           }
           return (
