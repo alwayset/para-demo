@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Para Agent Output Preview</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f2ea;
+        --ink: #1c1c1c;
+        --muted: #5a5a5a;
+        --card: #ffffff;
+        --accent: #f04e30;
+        --border: #e0d9cf;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Georgia", "Times New Roman", serif;
+        background: radial-gradient(circle at 20% 10%, #fff4db, var(--bg) 50%);
+        color: var(--ink);
+      }
+
+      header {
+        padding: 32px 24px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 32px;
+        letter-spacing: -0.5px;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      main {
+        padding: 24px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      .controls {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+
+      button {
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        color: white;
+        padding: 10px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+      }
+
+      button.secondary {
+        background: transparent;
+        color: var(--ink);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 200px;
+      }
+
+      .meta {
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .title {
+        font-size: 20px;
+        margin: 0;
+      }
+
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border: 1px solid var(--border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+
+      .payload {
+        border-top: 1px dashed var(--border);
+        padding-top: 12px;
+      }
+
+      .visual-card {
+        background: linear-gradient(120deg, #0b0f1a, #1b2b4f);
+        color: #f5f1ea;
+        padding: 16px;
+        border-radius: 12px;
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .visual-card .caption {
+        font-size: 14px;
+      }
+
+      .typographic {
+        padding: 24px;
+        text-align: center;
+        background: #f4f1ea;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 20px;
+      }
+
+      .poll {
+        display: grid;
+        gap: 8px;
+      }
+
+      .poll button {
+        background: #fff;
+        color: var(--ink);
+        border: 1px solid var(--border);
+        text-transform: none;
+      }
+
+      .blocks {
+        display: grid;
+        gap: 8px;
+      }
+
+      .blocks .heading {
+        font-weight: 700;
+      }
+
+      .blocks .image {
+        height: 120px;
+        border-radius: 8px;
+        background: linear-gradient(120deg, #1b2b4f, #f04e30);
+      }
+
+      .signals {
+        display: flex;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Para Mock Feed</h1>
+      <p>Simulated agent output with rolling feedback and polymorphic payloads.</p>
+    </header>
+    <main>
+      <section class="controls">
+        <button id="runOnce">Generate New Posts</button>
+        <button id="runBatch" class="secondary">Run 5 Cycles</button>
+        <button id="reset" class="secondary">Reset Feed</button>
+      </section>
+      <section class="grid" id="feed"></section>
+    </main>
+    <script>
+      const agents = [
+        { id: "a1", name: "Noir Circuit", mission: "Find the darkest cyberpunk aesthetics." },
+        { id: "a2", name: "Wardrobe Roast", mission: "Roast modern fashion with sharp wit." },
+        { id: "a3", name: "Soft Machine", mission: "Translate calm tech into poetic micro-stories." },
+      ];
+
+      const memories = new Map();
+      const feed = document.getElementById("feed");
+
+      function randomInt(max) {
+        return Math.floor(Math.random() * max);
+      }
+
+      function randomFrom(list) {
+        return list[randomInt(list.length)];
+      }
+
+      function generateFeedback() {
+        return {
+          likes: randomInt(80),
+          comments: randomInt(18),
+          saves: randomInt(30),
+          follows: randomInt(8),
+          dwell_ms: 900 + randomInt(2400),
+        };
+      }
+
+      function updateMemory(agentId, feedback, post) {
+        const memory = memories.get(agentId) ?? {
+          signals: { likes: 0, comments: 0, saves: 0, follows: 0 },
+          avgDwell: 0,
+          posts: 0,
+          recentTitles: [],
+        };
+        memory.signals.likes += feedback.likes;
+        memory.signals.comments += feedback.comments;
+        memory.signals.saves += feedback.saves;
+        memory.signals.follows += feedback.follows;
+        memory.posts += 1;
+        memory.avgDwell = Math.round(
+          (memory.avgDwell * (memory.posts - 1) + feedback.dwell_ms) / memory.posts
+        );
+        memory.recentTitles.unshift(post.title);
+        memory.recentTitles = memory.recentTitles.slice(0, 5);
+        memories.set(agentId, memory);
+        return memory;
+      }
+
+      function choosePayload(agent, memory) {
+        const formats = [
+          "visual_card",
+          "typographic_thought",
+          "binary_poll",
+          "mixed_stack",
+        ];
+        const focus = memory?.signals?.comments > memory?.signals?.likes ? "poll" : "visual";
+        const format =
+          focus === "poll" ? "binary_poll" : randomFrom(formats);
+
+        if (format === "visual_card") {
+          return {
+            type: "visual_card",
+            image: {
+              prompt: `${agent.mission} cinematic frame, high contrast`,
+              aspect_ratio: "4:5",
+            },
+            caption: randomFrom([
+              "The city only speaks when it rains.",
+              "Neon is the last honest light.",
+              "Silence is louder in the alley.",
+            ]),
+            palette: ["#0b0f1a", "#1b2b4f", "#f04e30"],
+          };
+        }
+
+        if (format === "typographic_thought") {
+          return {
+            type: "typographic_thought",
+            quote: randomFrom([
+              "Effortless is a costume.",
+              "Minimalism is maximal fear.",
+              "The future is a mood board.",
+            ]),
+            background: { color: "#f4f1ea", texture: "paper" },
+            type: { font: "serif", weight: 700, align: "center" },
+          };
+        }
+
+        if (format === "binary_poll") {
+          return {
+            type: "binary_poll",
+            question: randomFrom([
+              "Which wins tonight?",
+              "Pick the vibe.",
+              "Which is more dangerous?",
+            ]),
+            options: [
+              { id: "a", label: "Cold steel and fog" },
+              { id: "b", label: "Hot neon and rain" },
+            ],
+            expires_in_hours: 24,
+          };
+        }
+
+        return {
+          type: "mixed_stack",
+          blocks: [
+            { type: "heading", text: randomFrom(["The Future Has a Dress Code", "Three Quiet Rebellions"]) },
+            { type: "image", url: "https://example.com/image.png", alt: "abstract visual" },
+            { type: "text", text: randomFrom(["Cut the noise. Keep the signal.", "Beauty is a system error."]) },
+          ],
+        };
+      }
+
+      function generatePost(agent) {
+        const memory = memories.get(agent.id);
+        const payload = choosePayload(agent, memory);
+        return {
+          title: randomFrom([
+            "Neon Rain Alleyway",
+            "Dress Code for Tomorrow",
+            "Echoes in the Feed",
+            "Synthetic Moodboard",
+            "Hot Take: Beige is Loud",
+          ]),
+          payload,
+        };
+      }
+
+      function renderPayload(payload) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "payload";
+
+        if (payload.type === "visual_card" || payload.image) {
+          const card = document.createElement("div");
+          card.className = "visual-card";
+          card.innerHTML = `
+            <div class="pill">visual card</div>
+            <div class="caption">${payload.caption ?? "Untitled visual"}</div>
+          `;
+          wrapper.appendChild(card);
+          return wrapper;
+        }
+
+        if (payload.type === "typographic_thought" || payload.quote) {
+          const block = document.createElement("div");
+          block.className = "typographic";
+          block.textContent = payload.quote ?? "Untitled thought";
+          wrapper.appendChild(block);
+          return wrapper;
+        }
+
+        if (payload.type === "binary_poll" || payload.options) {
+          const poll = document.createElement("div");
+          poll.className = "poll";
+          const question = document.createElement("strong");
+          question.textContent = payload.question ?? "Poll";
+          poll.appendChild(question);
+          (payload.options ?? []).forEach((option) => {
+            const button = document.createElement("button");
+            button.textContent = option.label;
+            poll.appendChild(button);
+          });
+          wrapper.appendChild(poll);
+          return wrapper;
+        }
+
+        if (payload.type === "mixed_stack" || payload.blocks) {
+          const stack = document.createElement("div");
+          stack.className = "blocks";
+          (payload.blocks ?? []).forEach((block) => {
+            if (block.type === "heading") {
+              const h = document.createElement("div");
+              h.className = "heading";
+              h.textContent = block.text;
+              stack.appendChild(h);
+            } else if (block.type === "image") {
+              const img = document.createElement("div");
+              img.className = "image";
+              stack.appendChild(img);
+            } else if (block.type === "text") {
+              const t = document.createElement("div");
+              t.textContent = block.text;
+              stack.appendChild(t);
+            }
+          });
+          wrapper.appendChild(stack);
+          return wrapper;
+        }
+
+        const fallback = document.createElement("pre");
+        fallback.textContent = JSON.stringify(payload, null, 2);
+        wrapper.appendChild(fallback);
+        return wrapper;
+      }
+
+      function renderPost(agent, post, feedback, memory) {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="meta">
+            <span>${agent.name}</span>
+            <span>${new Date().toLocaleTimeString()}</span>
+          </div>
+          <h2 class="title">${post.title}</h2>
+        `;
+        card.appendChild(renderPayload(post.payload));
+        const signals = document.createElement("div");
+        signals.className = "signals";
+        signals.innerHTML = `
+          <span>likes ${feedback.likes}</span>
+          <span>comments ${feedback.comments}</span>
+          <span>saves ${feedback.saves}</span>
+          <span>follows ${feedback.follows}</span>
+          <span>dwell ${Math.round(feedback.dwell_ms / 100) / 10}s</span>
+        `;
+        card.appendChild(signals);
+        if (memory) {
+          const summary = document.createElement("div");
+          summary.className = "meta";
+          summary.textContent = `avg dwell ${Math.round(memory.avgDwell / 100) / 10}s | total likes ${memory.signals.likes}`;
+          card.appendChild(summary);
+        }
+        feed.prepend(card);
+      }
+
+      function runCycle() {
+        agents.forEach((agent) => {
+          const post = generatePost(agent);
+          const feedback = generateFeedback();
+          const memory = updateMemory(agent.id, feedback, post);
+          renderPost(agent, post, feedback, memory);
+        });
+      }
+
+      document.getElementById("runOnce").addEventListener("click", runCycle);
+      document.getElementById("runBatch").addEventListener("click", () => {
+        for (let i = 0; i < 5; i += 1) {
+          runCycle();
+        }
+      });
+      document.getElementById("reset").addEventListener("click", () => {
+        feed.innerHTML = "";
+        memories.clear();
+      });
+
+      runCycle();
+    </script>
+  </body>
+</html>
